@@ -1,0 +1,123 @@
+# docker compose file for running a 3-node PostgreSQL cluster
+# with 3-node etcd cluster as the DCS and one haproxy node
+version: "2"
+
+networks:
+    demo:
+
+services:
+
+    consul1: &consul
+        image: patroni
+        container_name: demo-consul1
+        hostname: consul1
+        networks: [ demo ]
+        ports: 
+            - "8500:8500"
+        environment:
+            PATRONI_CONSUL_HOST: 127.0.0.1:8500
+            PATRONI_CONSUL_URL: http://127.0.0.1:8500/v1/
+        command: consul agent -server -advertise consul1 -bootstrap-expect 3 -client 0.0.0.0 -retry-join consul1 -retry-join consul2 -retry-join consul3
+#        volumes:
+#            - consul-data:/data
+#        restart: unless-stopped
+
+#volumes:
+#    consul-data:
+
+    consul2:
+        <<: *consul
+        container_name: demo-consul2
+        hostname: consul2
+        command: consul agent -server -advertise consul1 -bootstrap-expect 3 -client 0.0.0.0 -retry-join consul1 -retry-join consul2 -retry-join consul3
+        depends_on:
+            - etcd1
+    etcd2:
+        <<: *etcd
+        container_name: demo-etcd2
+        hostname: etcd2
+        command: etcd -name etcd2 -initial-advertise-peer-urls http://etcd2:2380
+        depends_on:
+            - etcd1
+
+    etcd3:
+        <<: *etcd
+        container_name: demo-etcd3
+        hostname: etcd3
+        command: etcd -name etcd3 -initial-advertise-peer-urls http://etcd3:2380
+        depends_on:
+            - etcd2
+
+    haproxy:
+        image: patroni
+        networks: [ demo ]
+        env_file: docker/patroni.env
+        hostname: haproxy
+        container_name: demo-haproxy
+        depends_on:
+            - etcd1
+            - etcd2
+            - etcd3
+        ports:
+            - "5000:5000"
+            - "5001:5001"
+            - "7000:7000"
+        command: haproxy
+        environment: &haproxy_env
+            ETCDCTL_ENDPOINTS: http://etcd1:2379,http://etcd2:2379,http://etcd3:2379
+            PATRONI_ETCD3_HOSTS: "'etcd1:2379','etcd2:2379','etcd3:2379'"
+            PATRONI_SCOPE: demo
+
+    patroni1:
+        image: patroni
+        networks: [ demo ]
+        env_file: docker/patroni.env
+        hostname: patroni1
+        container_name: demo-patroni1
+        depends_on:
+            - haproxy
+        environment:
+            <<: *haproxy_env
+            PATRONI_NAME: patroni1
+
+    patroni2:
+        image: patroni
+        networks: [ demo ]
+        env_file: docker/patroni.env
+        hostname: patroni2
+        container_name: demo-patroni2
+        depends_on:
+            - haproxy
+        environment:
+            <<: *haproxy_env
+            PATRONI_NAME: patroni2
+
+    patroni3:
+        image: patroni
+        networks: [ demo ]
+        env_file: docker/patroni.env
+        hostname: patroni3
+        container_name: demo-patroni3
+        depends_on:
+            - haproxy
+        environment:
+            <<: *haproxy_env
+            PATRONI_NAME: patroni3
+
+#    pgbouncer:
+#        image: edoburu/pgbouncer   
+#        networks:
+#            - postgres-backend
+#        ports:
+#            - "5432:5432"
+#        depends_on:
+#            - patroni
+#        environment:
+#            ADMIN_USERS: admin
+#            DB_HOST: patroni
+#            DB_USER: admin
+#            DB_PASSWORD: admin
+#            POOL_MODE: transaction
+#            MAX_CLIENT_CONN: 1000
+#            DEFAULT_POOL_SIZE: 300
+#        restart: unless-stopped
