@@ -22,11 +22,14 @@ case "$1" in
             done
             exec dumb-init $CONFD zookeeper -node $PATRONI_ZOOKEEPER_HOSTS
         else
-            while ! etcdctl cluster-health 2> /dev/null; do
-                sleep 1
-            done
-            exec dumb-init $CONFD etcdv3 -node $(echo $ETCDCTL_ENDPOINTS | sed 's/,/ -node /g')
+#            while ! etcdctl cluster-health 2> /dev/null; do
+#                sleep 1
+#            done
+            exec dumb-init $CONFD consul -node $(echo $CONSUL_ENDPOINTS | sed 's/,/ -node /g')
         fi
+        ;;
+    consul)
+        exec "$@" -advertise $DOCKER_IP
         ;;
     etcd)
         exec "$@" -advertise-client-urls http://$DOCKER_IP:2379

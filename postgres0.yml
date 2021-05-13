@@ -18,8 +18,8 @@ restapi:
 
 consul:
   #Provide host to do the initial discovery of the cluster topology:
-  host: 127.0.0.1:8600
-  url: http://127.0.0.1:8600/v1/
+  host: 127.0.0.1:8500 
+  url:  http://127.0.0.1:8500
 
 #etcd:
   #Provide host to do the initial discovery of the cluster topology:

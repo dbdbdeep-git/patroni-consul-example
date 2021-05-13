@@ -50,8 +50,9 @@ RUN set -ex \
     && chown -R postgres:postgres /var/log \
 \
     # Download consul
-	&& wget -q https://releases.hashicorp.com/consul/${CONSULVERSION}/consul_${CONSULVERSION}_linux_amd64.zip \
-	&& unzip -d /usr/local/bin consul_${CONSULVERSION}_linux_amd64.zip
+	&& curl -sO https://releases.hashicorp.com/consul/${CONSULVERSION}/consul_${CONSULVERSION}_linux_amd64.zip \
+	&& unzip -d /usr/local/bin consul_${CONSULVERSION}_linux_amd64.zip \
+    && rm -f consul_${CONSULVERSION}_linux_amd64.zip \
 \
     # Download confd
     && curl -sL https://github.com/kelseyhightower/confd/releases/download/v${CONFDVERSION}/confd-${CONFDVERSION}-linux-amd64 \
@@ -146,7 +147,7 @@ RUN sed -i 's/env python/&3/' /patroni*.py \
     && sed -i "s|^\(  data_dir: \).*|\1$PGDATA|" postgres?.yml \
     && sed -i "s|^#\(  bin_dir: \).*|\1$PGBIN|" postgres?.yml \
     && sed -i 's/^  - encoding: UTF8/  - locale: en_US.UTF-8\n&/' postgres?.yml \
-    && sed -i 's/^\(scope\|name\|etcd\|  host\|  authentication\|  pg_hba\|  parameters\):/#&/' postgres?.yml \
+    && sed -i 's/^\(scope\|name\|consul\|  host\|  authentication\|  pg_hba\|  parameters\):/#&/' postgres?.yml \
     && sed -i 's/^    \(replication\|superuser\|rewind\|unix_socket_directories\|\(\(  \)\{0,1\}\(username\|password\)\)\):/#&/' postgres?.yml \
     && sed -i 's/^      parameters:/      pg_hba:\n      - local all all trust\n      - host replication all all md5\n      - host all all all md5\n&\n        max_connections: 100/'  postgres?.yml \
     && if [ "$COMPRESS" = "true" ]; then chmod u+s /usr/bin/sudo; fi \

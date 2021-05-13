@@ -1,53 +1,38 @@
 # docker compose file for running a 3-node PostgreSQL cluster
-# with 3-node etcd cluster as the DCS and one haproxy node
+# with 3-node consul cluster as the DCS and one haproxy node
 version: "2"
 
 networks:
     demo:
 
 services:
-
-    consul1: &consul
+    consul1:
         image: patroni
         container_name: demo-consul1
         hostname: consul1
         networks: [ demo ]
         ports: 
             - "8500:8500"
-        environment:
-            PATRONI_CONSUL_HOST: 127.0.0.1:8500
-            PATRONI_CONSUL_URL: http://127.0.0.1:8500/v1/
-        command: consul agent -server -advertise consul1 -bootstrap-expect 3 -client 0.0.0.0 -retry-join consul1 -retry-join consul2 -retry-join consul3
-#        volumes:
-#            - consul-data:/data
-#        restart: unless-stopped
-
-#volumes:
-#    consul-data:
+        command: consul agent -server -bootstrap -client 0.0.0.0 -retry-join consul1 -retry-join consul2 -retry-join consul3 -ui -data-dir=/tmp/consul
 
     consul2:
-        <<: *consul
+        image: patroni
         container_name: demo-consul2
         hostname: consul2
-        command: consul agent -server -advertise consul1 -bootstrap-expect 3 -client 0.0.0.0 -retry-join consul1 -retry-join consul2 -retry-join consul3
+        networks: [ demo ]
+        command: consul agent -client 0.0.0.0 -retry-join consul1 -retry-join consul2 -retry-join consul3 -ui -data-dir=/tmp/consul
         depends_on:
-            - etcd1
-    etcd2:
-        <<: *etcd
-        container_name: demo-etcd2
-        hostname: etcd2
-        command: etcd -name etcd2 -initial-advertise-peer-urls http://etcd2:2380
-        depends_on:
-            - etcd1
+            - consul1
 
-    etcd3:
-        <<: *etcd
-        container_name: demo-etcd3
-        hostname: etcd3
-        command: etcd -name etcd3 -initial-advertise-peer-urls http://etcd3:2380
+    consul3:
+        image: patroni
+        
+        container_name: demo-consul3
+        hostname: consul3
+        networks: [ demo ]
+        command: consul agent -client 0.0.0.0 -retry-join consul1 -retry-join consul2 -retry-join consul3 -ui -data-dir=/tmp/consul
         depends_on:
-            - etcd2
-
+            - consul1
     haproxy:
         image: patroni
         networks: [ demo ]
@@ -55,17 +40,16 @@ services:
         hostname: haproxy
         container_name: demo-haproxy
         depends_on:
-            - etcd1
-            - etcd2
-            - etcd3
+            - consul1
+            - consul2
+            - consul3
         ports:
             - "5000:5000"
             - "5001:5001"
             - "7000:7000"
         command: haproxy
         environment: &haproxy_env
-            ETCDCTL_ENDPOINTS: http://etcd1:2379,http://etcd2:2379,http://etcd3:2379
-            PATRONI_ETCD3_HOSTS: "'etcd1:2379','etcd2:2379','etcd3:2379'"
+            CONSUL_ENDPOINTS: http://consul1:8500,http://consul2:8500,http://consul3:8500
             PATRONI_SCOPE: demo
 
     patroni1:
