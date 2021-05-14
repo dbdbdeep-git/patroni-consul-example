@@ -25,7 +25,8 @@ case "$1" in
 #            while ! etcdctl cluster-health 2> /dev/null; do
 #                sleep 1
 #            done
-            exec dumb-init $CONFD consul -node $(echo $CONSUL_ENDPOINTS | sed 's/,/ -node /g')
+#            exec dumb-init $CONFD consul -node $(echo $CONSUL_ENDPOINTS | sed 's/,/ -node /g')
+             exec  dumb-init $CONFD consul -node consul1:8500
         fi
         ;;
     consul)
@@ -41,8 +42,9 @@ esac
 
 ## We start an etcd
 if [ -z "$PATRONI_ETCD3_HOSTS" ] && [ -z "$PATRONI_ZOOKEEPER_HOSTS" ]; then
-    export PATRONI_ETCD_URL="http://127.0.0.1:2379"
-    etcd --data-dir /tmp/etcd.data -advertise-client-urls=$PATRONI_ETCD_URL -listen-client-urls=http://0.0.0.0:2379 > /var/log/etcd.log 2> /var/log/etcd.err &
+#    export PATRONI_ETCD_URL="http://127.0.0.1:2379"
+#    etcd --data-dir /tmp/etcd.data -advertise-client-urls=$PATRONI_ETCD_URL -listen-client-urls=http://0.0.0.0:2379 > /var/log/etcd.log 2> /var/log/etcd.err &
+    consul agent -advertise $DOCKER_IP -client 0.0.0.0 -retry-join consul1 -retry-join consul2 -retry-join consul3 -ui -data-dir=/tmp/consul > /var/log/consul.log 2> /var/log/consul.err &
 fi
 
 export PATRONI_SCOPE

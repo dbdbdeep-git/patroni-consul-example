@@ -24,9 +24,10 @@ RUN set -ex \
     && apt-cache depends patroni | sed -n -e 's/.*Depends: \(python3-.\+\)$/\1/p' \
             | grep -Ev '^python3-(sphinx|etcd|consul|kazoo|kubernetes)' \
             | xargs apt-get install -y vim unzip curl less jq locales haproxy sudo \
-                            python3-consul python3-kazoo python3-pip busybox \
+                            python3-kazoo python3-pip busybox \
                             net-tools iputils-ping --fix-missing \
     && pip3 install dumb-init \
+    && pip3 install python-consul2 \
 \
     # Cleanup all locales but en_US.UTF-8
     && find /usr/share/i18n/charmaps/ -type f ! -name UTF-8.gz -delete \
@@ -147,7 +148,7 @@ RUN sed -i 's/env python/&3/' /patroni*.py \
     && sed -i "s|^\(  data_dir: \).*|\1$PGDATA|" postgres?.yml \
     && sed -i "s|^#\(  bin_dir: \).*|\1$PGBIN|" postgres?.yml \
     && sed -i 's/^  - encoding: UTF8/  - locale: en_US.UTF-8\n&/' postgres?.yml \
-    && sed -i 's/^\(scope\|name\|consul\|  host\|  authentication\|  pg_hba\|  parameters\):/#&/' postgres?.yml \
+    && sed -i 's/^\(scope\|name\|  host\|  authentication\|  pg_hba\|  parameters\):/#&/' postgres?.yml \
     && sed -i 's/^    \(replication\|superuser\|rewind\|unix_socket_directories\|\(\(  \)\{0,1\}\(username\|password\)\)\):/#&/' postgres?.yml \
     && sed -i 's/^      parameters:/      pg_hba:\n      - local all all trust\n      - host replication all all md5\n      - host all all all md5\n&\n        max_connections: 100/'  postgres?.yml \
     && if [ "$COMPRESS" = "true" ]; then chmod u+s /usr/bin/sudo; fi \
