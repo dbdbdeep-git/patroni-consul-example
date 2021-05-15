@@ -13,14 +13,14 @@ services:
         networks: [ demo ]
         ports: 
             - "8500:8500"
-        command: consul agent -server -bootstrap -client 0.0.0.0 -retry-join consul1 -retry-join consul2 -retry-join consul3 -ui -data-dir=/tmp/consul
+        command: consul agent -server -bootstrap-expect 3 -client 0.0.0.0 -retry-join consul1 -retry-join consul2 -retry-join consul3 -ui -data-dir=/tmp/consul
 
     consul2:
         image: patroni
         container_name: demo-consul2
         hostname: consul2
         networks: [ demo ]
-        command: consul agent -client 0.0.0.0 -retry-join consul1 -retry-join consul2 -retry-join consul3 -ui -data-dir=/tmp/consul
+        command: consul agent -server -bootstrap-expect 3 -client 0.0.0.0 -retry-join consul1 -retry-join consul2 -retry-join consul3 -ui -data-dir=/tmp/consul
         depends_on:
             - consul1
 
@@ -30,7 +30,7 @@ services:
         container_name: demo-consul3
         hostname: consul3
         networks: [ demo ]
-        command: consul agent -client 0.0.0.0 -retry-join consul1 -retry-join consul2 -retry-join consul3 -ui -data-dir=/tmp/consul
+        command: consul agent -server -bootstrap-expect 3 -client 0.0.0.0 -retry-join consul1 -retry-join consul2 -retry-join consul3 -ui -data-dir=/tmp/consul
         depends_on:
             - consul1
     haproxy:
